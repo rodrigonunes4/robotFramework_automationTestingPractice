@@ -1,1 +1,45 @@
+name: Robot Framework Tests
 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install geckodriver
+      run: |
+        GECKODRIVER_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | jq -r .tag_name)
+        wget -q https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz
+        tar -xzf geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz
+        sudo mv geckodriver /usr/local/bin/
+        
+    - name: Install dependencies
+      run: |
+        pip install robotframework
+        pip install robotframework-seleniumlibrary
+        
+    - name: Run Robot Framework tests
+      run: |
+        robot --outputdir results swagLabs/
+      continue-on-error: true
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: robot-results
+        path: results/
